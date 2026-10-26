@@ -84,10 +84,11 @@ void usage(int error)
 	fprintf(dest, "Further options:\n");
 	fprintf(dest, "        -l               : Loop forever\n");
 	fprintf(dest, "        -o               : Use files from overlay subdirectory if they exist (when using a custom directory)\n");
-	fprintf(dest, "                           USB Path (1-1.3.2 for example) is shown in verbose mode.\n");
+	fprintf(dest, "                           USB Path (1-1.3.2 for example) is shown with -vv.\n");
 	fprintf(dest, "                           (bootcode.bin is always preloaded from the base directory)\n");
 	fprintf(dest, "        -m delay         : Microseconds delay between checking for new devices (default 500)\n");
 	fprintf(dest, "        -v               : Verbose\n");
+	fprintf(dest, "        -vv              : More verbose\n");
 	fprintf(dest, "        -V               : Displays the version string and exits\n");
 	fprintf(dest, "        -s               : Signed using bootsig.bin\n");
 	fprintf(dest, "        -0/1/2/.../98    : Only look for CMs attached to USB port number 0-98\n");
