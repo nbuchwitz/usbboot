@@ -58,6 +58,8 @@ static void *bootfile_data;
 static FILE * check_file(const char * dir, const char *fname, int use_fmem);
 static int second_stage_prep(FILE *fp, FILE *fp_sig);
 static void prepare_second_stage(uint16_t product);
+static void format_usb_path(libusb_device *dev, char *buf, size_t len);
+static int location_matches(libusb_device *dev, const char *path);
 
 typedef struct MESSAGE_S {
 		int length;
@@ -124,6 +126,15 @@ libusb_device_handle * LIBUSB_CALL open_device_with_serialno(
 		if (handle != NULL) {
 			if (libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, serial_buffer, 31) >= 0) {
 				if (strncmp(serialno, (char *)serial_buffer, 32)) {
+					libusb_close(handle);
+					handle = NULL;
+					continue;
+				}
+
+				format_usb_path(cursor, pathname, sizeof(pathname));
+				if (!location_matches(cursor, pathname)) {
+					if (verbose == 2)
+						printf("Serial number matches but port / path does not\n");
 					libusb_close(handle);
 					handle = NULL;
 					continue;
@@ -212,6 +223,12 @@ static void format_usb_path(libusb_device *dev, char *buf, size_t len)
 
 	for (j = 0; j < n && pos < (int)len; j++)
 		pos += snprintf(buf + pos, len - pos, "%c%d", j ? '.' : '-', ports[j]);
+}
+
+static int location_matches(libusb_device *dev, const char *path)
+{
+	return (targetPortNo == 99 || libusb_get_port_number(dev) == targetPortNo) &&
+	       (targetpathname == NULL || strcmp(targetpathname, path) == 0);
 }
 
 /*
@@ -303,7 +320,6 @@ libusb_device_handle * LIBUSB_CALL open_device_with_vid(
 	struct libusb_device_handle *handle = NULL;
 	uint32_t i = 0;
 	int r;
-	uint8_t portNo = 0;
 
 	if (libusb_get_device_list(ctx, &devs) < 0)
 		return NULL;
@@ -316,14 +332,6 @@ libusb_device_handle * LIBUSB_CALL open_device_with_vid(
 
 		if(overlay || verbose == 2 || targetpathname!=NULL)
 			format_usb_path(dev, pathname, sizeof(pathname));
-
-		/*
-		  http://libusb.sourceforge.net/api-1.0/group__dev.html#ga14879a0ea7daccdcddb68852d86c00c4
-
-		  The port number returned by this call is usually guaranteed to be uniquely tied to a physical port,
-		  meaning that different devices plugged on the same physical port should return the same port number.
-		*/
-		portNo = libusb_get_port_number(dev);
 
 		if(verbose == 2)
 		{
@@ -341,8 +349,7 @@ libusb_device_handle * LIBUSB_CALL open_device_with_vid(
 					printf("Found candidate Compute Module...\n");
 
 				// Check if we should match against a specific port number or path
-				if ((targetPortNo == 99 || portNo == targetPortNo) &&
-					(targetpathname == NULL || strcmp(targetpathname, pathname) == 0))
+				if (location_matches(dev, pathname))
 				{
 					if(verbose)
 						printf("Device located successfully\n");
